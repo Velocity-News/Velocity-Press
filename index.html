@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VelocityPress</title>
+    
+    <!-- 1. ERROR HANDLER (Shows errors on screen instead of blank white page) -->
+    <script>
+        window.onerror = function(msg, url, lineNo, columnNo, error) {
+            document.body.innerHTML = '<div style="background: #fee2e2; color: #991b1b; padding: 20px; font-family: sans-serif; margin: 20px; border-radius: 8px; border: 1px solid #f87171;"><strong>⚠️ System Error:</strong><br><br>' + msg + '<br><br><small>Line: ' + lineNo + '</small></div>';
+            return false;
+        };
+    </script>
+
+    <!-- 2. Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 3. Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- 4. React & Firebase Config -->
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@18.2.0",
+        "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+        "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
+        "firebase/auth": "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js",
+        "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js",
+        "lucide-react": "https://esm.sh/lucide-react@0.344.0"
+      }
+    }
+    </script>
+    
+    <!-- 5. Babel Compiler -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3, h4, .font-serif { font-family: 'Merriweather', serif; }
+        .glass-nav { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(0,0,0,0.05); }
+        .dark .glass-nav { background: rgba(15, 23, 42, 0.95); border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .animate-fade-in { animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 transition-colors duration-300">
+    <div id="root"></div>
+
+    <script type="text/babel" data-type="module">
+        import React, { useState, useEffect } from 'react';
+        import ReactDOM from 'react-dom/client';
+        import { initializeApp } from 'firebase/app';
+        import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+        import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
+        import { 
+            Menu, Search, PlusCircle, TrendingUp, DollarSign, Clock, Share2, 
+            ChevronRight, X, AlertCircle, CheckCircle, Loader, MoreVertical, 
+            Moon, Sun, Info, Home, User, Mail, Lock, Send
+        } from 'lucide-react';
+
+   
+        
+        const firebaseConfig = {
+  apiKey: "AIzaSyAVzkZyN15MRyggVl7pQdGaz-tXxvGmMwM",
+  authDomain: "velocity-press.firebaseapp.com",
+  projectId: "velocity-press",
+  storageBucket: "velocity-press.firebasestorage.app",
+  messagingSenderId: "378940138518",
+  appId: "1:378940138518:web:d9965b358b7ba9a8140137",
+  measurementId: "G-PFD81KRVZQ"
+};
+
+       
+
+        let app, auth, db;
+        let configError = false;
+
+        // Safely Initialize Firebase
+        try {
+            if (firebaseConfig.apiKey === "PASTE_API_KEY_HERE") {
+                configError = true;
+            } else {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+            }
+        } catch (e) {
+            console.error(e);
+            configError = true;
+        }
+
+        function VelocityPress() {
+            const [user, setUser] = useState(null);
+            const [view, setView] = useState('home');
+            const [articles, setArticles] = useState([]);
+            const [selectedArticle, setSelectedArticle] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [activeCategory, setActiveCategory] = useState('All');
+            const [darkMode, setDarkMode] = useState(false);
+            const [menuOpen, setMenuOpen] = useState(false);
+            const [loginModalOpen, setLoginModalOpen] = useState(false);
+            const [isAdminMode, setIsAdminMode] = useState(false);
+            
+            const [shareMsg, setShareMsg] = useState('');
+            const [subEmail, setSubEmail] = useState('');
+            const [subStatus, setSubStatus] = useState('idle');
+
+            const [uploadStatus, setUploadStatus] = useState('idle');
+            const [statusMessage, setStatusMessage] = useState('');
+            const [formData, setFormData] = useState({ title: '', category: 'Football', excerpt: '', content: '', imageUrl: '' });
+            const [loginPass, setLoginPass] = useState('');
+            const [loginError, setLoginError] = useState('');
+
+            useEffect(() => {
+                if (configError || !auth) return;
+                signInAnonymously(auth).catch(e => console.error(e));
+                return onAuthStateChanged(auth, u => setUser(u));
+            }, []);
+
+            useEffect(() => {
+                if (configError || !db) return;
+                const unsubscribe = onSnapshot(collection(db, 'velocity_articles'), (snapshot) => {
+                    const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    docs.sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+                    setArticles(docs);
+                    setLoading(false);
+                });
+                return () => unsubscribe();
+            }, []);
+
+            // Handlers
+            const handlePublish = async (e) => {
+                e.preventDefault();
+                if (!db) return;
+                setUploadStatus('publishing');
+                try {
+                    await addDoc(collection(db, 'velocity_articles'), {
+                        ...formData,
+                        timestamp: serverTimestamp(),
+                        dateString: new Date().toLocaleDateString(),
+                        authorId: user?.uid
+                    });
+                    setUploadStatus('success');
+                    setStatusMessage("Published!");
+                    setTimeout(() => {
+                        setUploadStatus('idle'); setView('home'); setStatusMessage('');
+                        setFormData({ title: '', category: 'Football', excerpt: '', content: '', imageUrl: '' });
+                    }, 1500);
+                } catch (err) { setUploadStatus('error'); setStatusMessage("Failed."); }
+            };
+
+            const handleSubscribe = async () => {
+                if (!subEmail || !db) return;
+                setSubStatus('loading');
+                try {
+                    await addDoc(collection(db, 'velocity_subscribers'), { email: subEmail, timestamp: serverTimestamp() });
+                    setSubStatus('success'); setSubEmail(''); setTimeout(() => setSubStatus('idle'), 2000);
+                } catch(e) { setSubStatus('idle'); }
+            };
+
+            const handleShare = async () => {
+                const url = window.location.href;
+                if (navigator.share) {
+                    try { await navigator.share({ title: "VelocityPress", url }); } catch(e){}
+                } else {
+                    navigator.clipboard.writeText(url);
+                    setShareMsg('Copied!'); setTimeout(() => setShareMsg(''), 2000);
+                }
+            };
+
+            const handleLogin = (e) => {
+                e.preventDefault();
+                if (loginPass === 'admin123') {
+                    setIsAdminMode(true); setLoginModalOpen(false); setMenuOpen(false); setView('admin');
+                } else { setLoginError('Incorrect password'); }
+            };
+
+            // Theme
+            useEffect(() => {
+                if (darkMode) document.documentElement.classList.add('dark');
+                else document.documentElement.classList.remove('dark');
+            }, [darkMode]);
+
+            const theme = {
+                bg: darkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900',
+                card: darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200',
+                input: darkMode ? 'bg-slate-800 text-white border-slate-700' : 'bg-white text-slate-900 border-slate-300',
+                nav: darkMode ? 'bg-slate-900/95' : 'bg-white/95',
+                footer: darkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-900 border-slate-800'
+            };
+
+            if (configError) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center bg-red-50 p-6 text-center">
+                        <div className="max-w-md bg-white p-6 rounded-xl shadow-lg border border-red-200">
+                            <h1 className="text-xl font-bold text-red-600 mb-2">Setup Required</h1>
+                            <p className="text-slate-600 mb-4 text-sm">You haven't pasted your Firebase Keys yet.</p>
+                            <div className="bg-slate-100 p-3 rounded text-xs text-left font-mono">
+                                Scroll to line 105 in your code editor and replace "PASTE_API_KEY_HERE" with your real keys.
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className={`min-h-screen ${theme.bg} flex flex-col font-sans transition-colors duration-300`}>
+                    
+                    {/* Login Modal */}
+                    {loginModalOpen && (
+                        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setLoginModalOpen(false)}></div>
+                            <div className={`relative w-full max-w-sm ${theme.card} rounded-2xl shadow-2xl p-6 border animate-fade-in`}>
+                                <h2 className="text-xl font-bold text-center mb-4">Staff Login</h2>
+                                <div className="text-xs bg-yellow-100 text-yellow-800 p-2 rounded text-center mb-4">Pass: admin123</div>
+                                <form onSubmit={handleLogin} className="space-y-4">
+                                    <input type="password" value={loginPass} onChange={e=>setLoginPass(e.target.value)} className={`w-full p-3 rounded-lg border outline-none ${theme.input}`} placeholder="Password" />
+                                    {loginError && <p className="text-red-500 text-xs">{loginError}</p>}
+                                    <button className="w-full bg-red-600 text-white py-3 rounded-lg font-bold">Login</button>
+                                </form>
+                                <button onClick={() => setLoginModalOpen(false)} className="absolute top-4 right-4"><X size={20}/></button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Mobile Menu */}
+                    <div className={`fixed inset-0 z-50 transform ${menuOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300`}>
+                        <div className="absolute inset-0 bg-black/50" onClick={()=>setMenuOpen(false)}></div>
+                        <div className={`relative w-72 h-full ${theme.card} shadow-2xl p-6 border-r`}>
+                             <div className="flex justify-between items-center mb-8 pb-4 border-b border-opacity-10">
+                                <span className="font-bold text-xl">Menu</span>
+                                <button onClick={()=>setMenuOpen(false)}><X /></button>
+                             </div>
+                             <nav className="space-y-2">
+                                 <button onClick={()=>{setView('home');setMenuOpen(false)}} className="w-full text-left p-3 rounded-lg hover:bg-opacity-10 hover:bg-slate-500 flex items-center gap-3"><Home size={18}/> Home</button>
+                                 <button onClick={()=>{setView('about');setMenuOpen(false)}} className="w-full text-left p-3 rounded-lg hover:bg-opacity-10 hover:bg-slate-500 flex items-center gap-3"><Info size={18}/> About</button>
+                                 <button onClick={()=>{setMenuOpen(false); isAdminMode ? setView('admin') : setLoginModalOpen(true)}} className="w-full text-left p-3 rounded-lg text-red-600 font-bold bg-red-50 dark:bg-red-900/10 flex items-center gap-3"><PlusCircle size={18}/> Upload</button>
+                             </nav>
+                        </div>
+                    </div>
+
+                    {/* Navbar */}
+                    <nav className={`sticky top-0 z-40 glass-nav`}>
+                        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <button onClick={() => setMenuOpen(true)} className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800"><MoreVertical /></button>
+                                <div onClick={() => setView('home')} className="flex items-center cursor-pointer">
+                                    <div className="bg-red-600 text-white px-2 py-1 mr-2 font-black italic transform -skew-x-12 shadow-sm">VP</div>
+                                    <span className="font-serif text-xl font-bold tracking-tight hidden md:block">VelocityPress</span>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button onClick={() => setDarkMode(!darkMode)} className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800">
+                                    {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+                                </button>
+                                <button onClick={() => isAdminMode ? setView('admin') : setLoginModalOpen(true)} className="bg-red-600 text-white px-4 py-2 rounded-full text-xs font-bold shadow-md shadow-red-600/20 flex items-center gap-1">
+                                    <PlusCircle size={14}/> Upload
+                                </button>
+                            </div>
+                        </div>
+                    </nav>
+
+                    {/* Main Content */}
+                    <main className="flex-1 max-w-7xl mx-auto w-full p-4 md:py-8">
+                        {view === 'home' && (
+                            <div className="animate-fade-in">
+                                <div className="flex overflow-x-auto pb-4 gap-2 mb-6 no-scrollbar">
+                                    {['All', 'Football', 'World', 'Tech', 'Business'].map(cat => (
+                                        <button key={cat} onClick={()=>setActiveCategory(cat)} 
+                                            className={`whitespace-nowrap px-4 py-2 rounded-full text-xs font-bold transition-all ${activeCategory===cat ? 'bg-red-600 text-white shadow-md' : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>
+                                            {cat}
+                                        </button>
+                                    ))}
+                                </div>
+                                {loading ? (
+                                    <div className="py-20 flex justify-center"><Loader className="animate-spin text-red-600" size={32} /></div>
+                                ) : (
+                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                        <div className="lg:col-span-2 space-y-6">
+                                            {(activeCategory === 'All' ? articles : articles.filter(a => a.category === activeCategory)).map(article => (
+                                                <div key={article.id} onClick={()=>{setSelectedArticle(article); setView('article'); window.scrollTo(0,0)}} 
+                                                    className={`${theme.card} rounded-xl overflow-hidden border cursor-pointer hover:shadow-lg transition-shadow`}>
+                                                    <div className="h-56 relative">
+                                                        <img src={article.imageUrl || "https://placehold.co/800x400"} className="w-full h-full object-cover" onError={(e) => e.target.src='https://placehold.co/800x400'}/>
+                                                        <div className="absolute top-3 left-3 bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow uppercase">{article.category}</div>
+                                                    </div>
+                                                    <div className="p-5">
+                                                        <h3 className="text-xl font-serif font-bold mb-2 leading-tight">{article.title}</h3>
+                                                        <p className="text-sm opacity-70 line-clamp-2">{article.excerpt}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {articles.length === 0 && <div className="text-center py-20 opacity-50">No news found.</div>}
+                                        </div>
+                                        <div className="hidden lg:block space-y-6">
+                                            <div className={`${theme.card} border p-6 rounded-xl`}>
+                                                <h3 className="font-bold text-lg mb-2">Subscribe</h3>
+                                                <div className="flex gap-2">
+                                                    <input value={subEmail} onChange={e=>setSubEmail(e.target.value)} type="email" placeholder="Email..." className={`w-full p-2 rounded border outline-none text-sm ${theme.input}`} />
+                                                    <button onClick={handleSubscribe} className="bg-red-600 text-white px-3 rounded font-bold text-sm">Go</button>
+                                                </div>
+                                                {subStatus === 'success' && <p className="text-green-500 text-xs mt-2">Subscribed!</p>}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {view === 'article' && selectedArticle && (
+                            <div className="max-w-3xl mx-auto animate-fade-in pb-12">
+                                <button onClick={()=>setView('home')} className="text-red-600 font-bold mb-6 text-sm flex items-center gap-1"><ChevronRight className="rotate-180" size={14}/> Back</button>
+                                <h1 className="text-3xl md:text-4xl font-serif font-bold mb-4 leading-tight">{selectedArticle.title}</h1>
+                                <div className="flex items-center justify-between border-y border-opacity-10 py-3 mb-6 text-sm opaci
