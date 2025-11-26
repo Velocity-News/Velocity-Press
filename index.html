@@ -5,51 +5,67 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VelocityPress - Global News</title>
     
-    <!-- Styles & Fonts -->
+    <!-- 1. STYLES & CONFIG -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' }
+    </script>
     <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700;900&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        body { font-family: 'Inter', sans-serif; }
         h1, h2, h3, .font-serif { font-family: 'Merriweather', serif; }
+        
+        /* Smooth Fade In */
         .fade-in { animation: fadeIn 0.5s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
         /* Ticker Animation */
         .ticker-wrap { overflow: hidden; white-space: nowrap; }
-        .ticker { display: inline-block; animation: marquee 30s linear infinite; }
+        .ticker { display: inline-block; animation: marquee 40s linear infinite; }
         @keyframes marquee { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
         
+        /* Professional Glass Nav */
         .glass-nav { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid #e2e8f0; }
+        .dark .glass-nav { background: rgba(15, 23, 42, 0.95); border-bottom: 1px solid #334155; }
+        
+        /* Hide Scrollbar but keep functionality */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 
-    <!-- Code Libraries -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- 2. ROBUST LIBRARIES (Cloudflare for Mobile Stability) -->
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    
+    <!-- 3. FIREBASE (Compat Version) -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
-<body>
+<body class="bg-slate-50 text-slate-900 transition-colors duration-300">
     <div id="root"></div>
 
     <script type="text/babel">
-        // --- ICONS ---
-        const Icon = ({ p, size=20, className="" }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d={p} /></svg>
+        // --- ICONS (SVG Paths) ---
+        const Icon = ({ p, className="" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d={p} /></svg>
         );
         const Icons = {
             Menu: () => <Icon p="M4 6h16M4 12h16M4 18h16" />,
             X: () => <Icon p="M18 6 6 18M6 6l12 12" />,
             Share: () => <Icon p="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8m-4-6-4-4-4 4m4-4v13" />,
             Mail: () => <Icon p="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />,
+            Moon: () => <Icon p="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />,
+            Sun: () => <Icon p="M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0-8 0M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41m14.14-14.14l-1.41 1.41" />,
             Trending: () => <Icon p="M23 6l-9.5 9.5-5-5L1 18" />,
-            Clock: () => <Icon p="M12 2v10l4 2" size={14} />,
-            Lock: () => <Icon p="M12 15v2m-6 4h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2Zm10-10V7a4 4 0 0 0-8 0v4h8Z" size={14} />
+            Lock: () => <Icon p="M12 15v2m-6 4h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2Zm10-10V7a4 4 0 0 0-8 0v4h8Z" />,
+            Clock: () => <Icon p="M12 2v10l4 2" />,
+            User: () => <Icon p="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" />
         };
 
-        // --- YOUR FIREBASE KEYS (Already Inserted) ---
+        // --- CONFIGURATION ---
         const firebaseConfig = {
             apiKey: "AIzaSyAVzkZyN15MRyggVl7pQdGaz-tXxvGmMwM",
             authDomain: "velocity-press.firebaseapp.com",
@@ -65,64 +81,72 @@
         const auth = firebase.auth();
         const { useState, useEffect } = React;
 
-        // --- COMPONENTS ---
-
-        const AdSpace = ({ label }) => (
-            <div className="w-full bg-slate-100 border border-dashed border-slate-300 h-64 flex flex-col items-center justify-center text-slate-400 mb-8 rounded-lg">
-                <span className="text-xs font-bold uppercase tracking-widest">{label}</span>
-                <span className="text-[10px]">Advertisement</span>
-            </div>
-        );
-
-        const BannerAd = () => (
-            <div className="w-full bg-slate-100 border border-slate-200 h-24 flex items-center justify-center text-slate-400 my-6 rounded relative overflow-hidden">
-                <span className="text-xs font-bold uppercase tracking-widest border px-2 py-1 rounded">Top Banner Ad</span>
-            </div>
-        );
-
-        // --- MAIN APP ---
+        // --- APP ---
         function App() {
+            // UI State
             const [view, setView] = useState('home'); 
-            const [user, setUser] = useState(null);
-            const [articles, setArticles] = useState([]);
-            const [selectedArticle, setSelectedArticle] = useState(null);
             const [menuOpen, setMenuOpen] = useState(false);
+            const [darkMode, setDarkMode] = useState(false);
             const [activeCategory, setActiveCategory] = useState('All');
             
-            // Ticker State
-            const [tickerText, setTickerText] = useState("Welcome to VelocityPress - Breaking Global News...");
+            // Data State
+            const [user, setUser] = useState(null);
+            const [articles, setArticles] = useState([]);
+            const [tickerText, setTickerText] = useState("Welcome to VelocityPress - Global Breaking News...");
+            const [selectedArticle, setSelectedArticle] = useState(null);
             
-            // Admin State
-            const [adminPass, setAdminPass] = useState('');
+            // Admin/Form State
+            const [email, setEmail] = useState('');
+            const [password, setPassword] = useState('');
+            const [authError, setAuthError] = useState('');
+            const [subEmail, setSubEmail] = useState('');
+            const [subStatus, setSubStatus] = useState('idle'); // idle, loading, success
             const [formData, setFormData] = useState({ title: '', category: 'Football', imageUrl: '', content: '', excerpt: '' });
             const [uploadStatus, setUploadStatus] = useState('');
-            const [newTickerText, setNewTickerText] = useState('');
+            const [newTicker, setNewTicker] = useState('');
 
-            // Load Data
+            // --- INITIALIZATION ---
             useEffect(() => {
-                auth.signInAnonymously().catch(console.error);
+                // 1. Auth Listener
                 auth.onAuthStateChanged(u => setUser(u));
                 
-                // 1. Get Articles
-                db.collection('velocity_articles').orderBy('timestamp', 'desc')
-                  .onSnapshot(snap => {
-                      const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                      setArticles(docs);
-                  });
+                // 2. Load Articles (Real-time)
+                db.collection('velocity_articles').orderBy('timestamp', 'desc').onSnapshot(snap => {
+                    const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    setArticles(docs);
+                });
 
-                // 2. Get Dynamic Ticker Text
+                // 3. Load Ticker (Real-time)
                 db.collection('velocity_settings').doc('ticker').onSnapshot(doc => {
-                    if (doc.exists) {
-                        setTickerText(doc.data().text);
-                    }
+                    if(doc.exists) setTickerText(doc.data().text);
                 });
             }, []);
 
-            const filteredArticles = activeCategory === 'All' ? articles : articles.filter(a => a.category === activeCategory);
+            // Dark Mode Toggle
+            useEffect(() => {
+                if (darkMode) document.body.classList.add('dark');
+                else document.body.classList.remove('dark');
+            }, [darkMode]);
 
-            // Actions
+            // --- HANDLERS ---
+
+            // Login (Restricted to existing Firebase Users)
+            const handleLogin = async (e) => {
+                e.preventDefault();
+                setAuthError('');
+                try {
+                    await auth.signInWithEmailAndPassword(email, password);
+                    setView('admin'); 
+                    setMenuOpen(false);
+                } catch (err) {
+                    setAuthError("Access Denied: Invalid Credentials");
+                }
+            };
+
+            // Upload News
             const handlePublish = async (e) => {
                 e.preventDefault();
+                if (!formData.title) return;
                 setUploadStatus('Publishing...');
                 try {
                     await db.collection('velocity_articles').add({
@@ -131,7 +155,7 @@
                         dateString: new Date().toLocaleDateString(),
                         authorId: user?.uid
                     });
-                    setUploadStatus('Article Published!');
+                    setUploadStatus('Success!');
                     setTimeout(() => { 
                         setUploadStatus(''); 
                         setFormData({ title: '', category: 'Football', imageUrl: '', content: '', excerpt: '' });
@@ -139,142 +163,254 @@
                 } catch(err) { setUploadStatus('Error'); }
             };
 
-            const handleUpdateTicker = async (e) => {
-                e.preventDefault();
-                if(!newTickerText) return;
+            // Update Ticker
+            const handleUpdateTicker = async () => {
+                if(!newTicker) return;
                 try {
-                    await db.collection('velocity_settings').doc('ticker').set({ text: newTickerText });
-                    setUploadStatus('Ticker Updated!');
-                    setNewTickerText('');
-                    setTimeout(() => setUploadStatus(''), 1500);
-                } catch(err) { setUploadStatus('Error updating ticker'); }
+                    await db.collection('velocity_settings').doc('ticker').set({ text: newTicker });
+                    alert("Ticker Updated"); setNewTicker('');
+                } catch(e) { alert("Error updating ticker"); }
             };
 
-            const handleLogin = () => {
-                if (adminPass === 'admin123') setView('admin');
-                else alert('Wrong Password');
+            // Subscription
+            const handleSubscribe = async () => {
+                if (!subEmail || !subEmail.includes('@')) return alert("Invalid Email");
+                setSubStatus('loading');
+                try {
+                    await db.collection('velocity_subscribers').add({ email: subEmail, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+                    setSubStatus('success'); setSubEmail(''); setTimeout(() => setSubStatus('idle'), 2000);
+                } catch(e) { setSubStatus('idle'); }
             };
 
-            const handleShare = async () => {
-                if (navigator.share) {
-                    try { await navigator.share({ title: "VelocityPress", url: window.location.href }); } catch(e){}
-                } else {
-                    navigator.clipboard.writeText(window.location.href);
-                    alert("Link copied!");
-                }
-            };
+            const filteredArticles = activeCategory === 'All' ? articles : articles.filter(a => a.category === activeCategory);
 
             // --- RENDER ---
             return (
-                <div className="min-h-screen flex flex-col font-sans selection:bg-red-100 selection:text-red-900">
+                <div className={`min-h-screen flex flex-col ${darkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
                     
-                    {/* DYNAMIC TICKER (READS FROM DB) */}
+                    {/* 1. TICKER BAR */}
                     <div className="bg-slate-900 text-white py-2 px-4 flex items-center overflow-hidden whitespace-nowrap text-sm font-medium sticky top-0 z-50 shadow-md">
                         <span className="bg-red-600 text-xs font-bold px-2 py-0.5 mr-4 rounded animate-pulse shrink-0">LIVE</span>
-                        <div className="ticker-wrap w-full">
-                            <div className="ticker">{tickerText}</div>
-                        </div>
+                        <div className="ticker-wrap w-full"><div className="ticker">{tickerText}</div></div>
                     </div>
-                    
-                    {/* Navbar */}
+
+                    {/* 2. NAVBAR */}
                     <nav className="glass-nav sticky top-9 z-40 px-4 h-16 flex items-center justify-between">
+                        {/* Logo */}
+                        <div onClick={() => setView('home')} className="flex items-center cursor-pointer group">
+                            <div className="bg-red-600 text-white px-1 mr-2 font-black italic text-lg transform -skew-x-12">VP</div>
+                            <span className="font-serif text-2xl font-bold tracking-tight">Velocity<span className="text-red-600">Press</span></span>
+                        </div>
+
+                        {/* Controls */}
                         <div className="flex items-center gap-4">
-                            <button onClick={() => setMenuOpen(true)}><Icons.Menu/></button>
-                            <div onClick={() => setView('home')} className="flex items-center cursor-pointer group">
-                                <div className="bg-red-600 text-white px-1 mr-2 font-black italic text-lg transform -skew-x-12">VP</div>
-                                <span className="font-serif text-2xl font-bold tracking-tight text-slate-900">Velocity<span className="text-red-600">Press</span></span>
-                            </div>
+                            <button onClick={() => setDarkMode(!darkMode)} className={`p-2 rounded-full ${darkMode ? 'bg-slate-800 text-yellow-400' : 'bg-slate-200 text-slate-600'}`}>
+                                {darkMode ? <Icons.Sun className="w-5 h-5"/> : <Icons.Moon className="w-5 h-5"/>}
+                            </button>
+                            {/* Hamburger Menu */}
+                            <button onClick={() => setMenuOpen(true)} className="p-1"><Icons.Menu className="w-8 h-8"/></button>
                         </div>
-                        <div className="hidden md:flex space-x-6 text-sm font-bold text-slate-500">
-                            {['Football', 'World', 'Tech', 'Business'].map(cat => (
-                                <button key={cat} onClick={() => {setActiveCategory(cat); setView('home');}} className={`hover:text-red-600 uppercase ${activeCategory===cat ? 'text-red-600' : ''}`}>{cat}</button>
-                            ))}
-                        </div>
-                        
-                        {/* UPLOAD BUTTON IS HIDDEN FROM HERE TO KEEP IT PRIVATE */}
-                        <div className="w-8"></div> 
                     </nav>
 
-                    {/* Mobile Menu */}
+                    {/* 3. SLIDE-OUT MENU (Top Right) */}
                     {menuOpen && (
                         <div className="fixed inset-0 bg-black/50 z-50" onClick={() => setMenuOpen(false)}>
-                            <div className="bg-white w-64 h-full p-6 shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
-                                <div className="flex justify-between mb-8">
+                            <div className={`absolute top-0 right-0 w-72 h-full p-6 shadow-2xl flex flex-col ${darkMode ? 'bg-slate-900' : 'bg-white'}`} onClick={e => e.stopPropagation()}>
+                                <div className="flex justify-between mb-8 items-center border-b pb-4 border-slate-200 dark:border-slate-700">
                                     <span className="font-bold text-xl">Menu</span>
-                                    <button onClick={() => setMenuOpen(false)}><Icons.X/></button>
+                                    <button onClick={() => setMenuOpen(false)}><Icons.X className="w-6 h-6"/></button>
                                 </div>
                                 <nav className="space-y-4">
-                                    <button onClick={() => {setView('home'); setMenuOpen(false)}} className="block w-full text-left font-bold">Home</button>
-                                    {['Football', 'World', 'Tech', 'Business'].map(cat => (
-                                        <button key={cat} onClick={() => {setActiveCategory(cat); setView('home'); setMenuOpen(false);}} className="block w-full text-left text-slate-500">{cat}</button>
-                                    ))}
+                                    <button onClick={() => {setView('home'); setMenuOpen(false)}} className="block w-full text-left font-bold text-lg">Home</button>
+                                    
+                                    <div className="border-t border-b py-4 border-slate-200 dark:border-slate-700 space-y-3">
+                                        {['Football', 'World', 'Tech', 'Business'].map(cat => (
+                                            <button key={cat} onClick={() => {setActiveCategory(cat); setView('home'); setMenuOpen(false);}} className="block w-full text-left text-slate-500 hover:text-red-600">{cat}</button>
+                                        ))}
+                                    </div>
+
+                                    {/* Admin Access Logic */}
+                                    {user ? (
+                                        <>
+                                            <button onClick={() => {setView('admin'); setMenuOpen(false)}} className="flex items-center gap-2 w-full text-left font-bold text-red-600 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+                                                <Icons.Trending className="w-4 h-4"/> Publisher Dashboard
+                                            </button>
+                                            <button onClick={() => {auth.signOut(); setView('home'); setMenuOpen(false)}} className="text-sm text-slate-400 block w-full text-left px-2">Log Out</button>
+                                        </>
+                                    ) : (
+                                        <button onClick={() => {setView('login'); setMenuOpen(false)}} className="flex items-center gap-2 w-full text-left font-medium text-slate-500 hover:text-red-600 px-2">
+                                            <Icons.User className="w-4 h-4"/> Publisher Login
+                                        </button>
+                                    )}
                                 </nav>
                             </div>
                         </div>
                     )}
 
-                    {/* Main Content */}
+                    {/* 4. MAIN CONTENT */}
                     <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-6 fade-in">
                         
+                        {/* LOGIN VIEW (Secure, No Signup) */}
+                        {view === 'login' && (
+                            <div className={`max-w-sm mx-auto p-8 rounded-xl shadow-xl border mt-10 ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}>
+                                <h2 className="text-2xl font-bold mb-2 text-center">Publisher Access</h2>
+                                <p className="text-center text-sm text-slate-500 mb-6">Restricted to authorized staff only.</p>
+                                
+                                <form onSubmit={handleLogin} className="space-y-4">
+                                    <div>
+                                        <label className="text-xs font-bold uppercase text-slate-400">Email</label>
+                                        <input type="email" required value={email} onChange={e=>setEmail(e.target.value)} className={`w-full border p-3 rounded ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`} placeholder="admin@velocity.com" />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold uppercase text-slate-400">Password</label>
+                                        <input type="password" required value={password} onChange={e=>setPassword(e.target.value)} className={`w-full border p-3 rounded ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`} placeholder="••••••••" />
+                                    </div>
+                                    
+                                    {authError && <p className="text-red-500 text-xs text-center bg-red-50 p-2 rounded">{authError}</p>}
+                                    
+                                    <button className="w-full bg-red-600 text-white p-3 rounded font-bold hover:bg-red-700 transition shadow-lg">
+                                        Login
+                                    </button>
+                                </form>
+                                <button onClick={()=>setView('home')} className="w-full text-center mt-4 text-sm text-slate-400">Cancel</button>
+                            </div>
+                        )}
+
+                        {/* ADMIN DASHBOARD */}
+                        {view === 'admin' && (
+                            <div className={`max-w-3xl mx-auto p-8 rounded-xl shadow-xl border space-y-10 ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}>
+                                <div className="flex justify-between items-center border-b border-slate-700 pb-6">
+                                    <h2 className="text-3xl font-serif font-bold">Publisher Studio</h2>
+                                    <div className="text-xs text-slate-400">Logged in as {user?.email}</div>
+                                </div>
+
+                                {/* Ticker Update */}
+                                <div className="border-b border-slate-700 pb-8">
+                                    <h3 className="font-bold mb-4 flex items-center gap-2 text-red-600"><Icons.Trending className="w-5 h-5"/> Breaking News Ticker</h3>
+                                    <div className="flex gap-2">
+                                        <input placeholder="Type breaking news message here..." className={`w-full border p-3 rounded ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`} onChange={e => setNewTicker(e.target.value)}/>
+                                        <button onClick={handleUpdateTicker} className="bg-slate-700 text-white px-6 rounded font-bold">Update</button>
+                                    </div>
+                                </div>
+
+                                {/* Article Upload */}
+                                <div>
+                                    <h3 className="font-bold mb-4 text-xl">Write New Article</h3>
+                                    <div className="space-y-5">
+                                        <div>
+                                            <label className="text-xs font-bold uppercase text-slate-400">Headline</label>
+                                            <input className={`w-full border p-3 rounded ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`} onChange={e => setFormData({...formData, title: e.target.value})} />
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="text-xs font-bold uppercase text-slate-400">Category</label>
+                                                <select className={`w-full border p-3 rounded ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`} onChange={e => setFormData({...formData, category: e.target.value})}>
+                                                    <option>Football</option><option>World</option><option>Tech</option><option>Business</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="text-xs font-bold uppercase text-slate-400">Image URL</label>
+                                                <input className={`w-full border p-3 rounded ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`} onChange={e => setFormData({...formData, imageUrl: e.target.value})} />
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="text-xs font-bold uppercase text-slate-400">Short Excerpt</label>
+                                            <textarea rows="2" className={`w-full border p-3 rounded ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`} onChange={e => setFormData({...formData, excerpt: e.target.value})}></textarea>
+                                        </div>
+
+                                        <div>
+                                            <label className="text-xs font-bold uppercase text-slate-400">Full Content</label>
+                                            <textarea rows="10" className={`w-full border p-3 rounded font-serif ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`} onChange={e => setFormData({...formData, content: e.target.value})}></textarea>
+                                        </div>
+                                        
+                                        {uploadStatus && <p className="text-center text-green-500 font-bold bg-green-900/20 p-2 rounded">{uploadStatus}</p>}
+                                        <button onClick={handlePublish} className="w-full bg-red-600 text-white p-4 rounded-lg font-bold hover:bg-red-700 shadow-lg">Publish Article</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* HOME VIEW */}
                         {view === 'home' && (
                             <>
-                                <BannerAd />
-                                
                                 {/* Category Pills (Mobile) */}
                                 <div className="md:hidden flex overflow-x-auto gap-2 pb-4 mb-4 no-scrollbar">
                                     {['All', 'Football', 'World', 'Tech', 'Business'].map(cat => (
-                                        <button key={cat} onClick={() => setActiveCategory(cat)} className={`whitespace-nowrap px-4 py-2 rounded-full text-xs font-bold ${activeCategory===cat ? 'bg-red-600 text-white' : 'bg-slate-200 text-slate-700'}`}>{cat}</button>
+                                        <button key={cat} onClick={() => setActiveCategory(cat)} className={`whitespace-nowrap px-4 py-2 rounded-full text-xs font-bold ${activeCategory===cat ? 'bg-red-600 text-white' : (darkMode ? 'bg-slate-800' : 'bg-slate-200')}`}>{cat}</button>
                                     ))}
                                 </div>
 
                                 {articles.length === 0 ? (
-                                    <div className="text-center py-32 text-slate-400">Loading latest news...</div>
+                                    <div className="text-center py-32 opacity-50">Loading latest news...</div>
                                 ) : (
                                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                                        {/* Main Column */}
                                         <div className="lg:col-span-8 space-y-8">
                                             {/* Hero Article */}
                                             {filteredArticles[0] && (
                                                 <div onClick={() => { setSelectedArticle(filteredArticles[0]); setView('article'); window.scrollTo(0,0); }} className="group cursor-pointer relative h-[400px] rounded-2xl overflow-hidden shadow-xl">
-                                                    <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent z-10 opacity-90"></div>
                                                     <img src={filteredArticles[0].imageUrl || 'https://placehold.co/800x600'} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                                                    <div className="absolute bottom-0 left-0 p-6 md:p-8 z-20 max-w-2xl">
-                                                        <span className="bg-red-600 text-white text-xs font-bold px-3 py-1 rounded uppercase tracking-wider mb-3 inline-block">{filteredArticles[0].category}</span>
-                                                        <h2 className="text-3xl md:text-4xl font-serif font-bold text-white leading-tight mb-2">{filteredArticles[0].title}</h2>
-                                                        <p className="text-slate-200 line-clamp-2 hidden md:block">{filteredArticles[0].excerpt || filteredArticles[0].content}</p>
+                                                    <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent opacity-90"></div>
+                                                    <div className="absolute bottom-0 left-0 p-6 md:p-8 z-20">
+                                                        <span className="bg-red-600 text-white text-xs font-bold px-3 py-1 rounded uppercase tracking-wider">{filteredArticles[0].category}</span>
+                                                        <h2 className="text-3xl md:text-4xl font-serif font-bold text-white mt-3 leading-tight">{filteredArticles[0].title}</h2>
+                                                        <p className="text-slate-200 line-clamp-2 hidden md:block mt-2">{filteredArticles[0].excerpt}</p>
                                                     </div>
                                                 </div>
                                             )}
-
-                                            {/* Article Grid */}
+                                            {/* Grid Articles */}
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                {filteredArticles.slice(1).map(article => (
-                                                    <div key={article.id} onClick={() => { setSelectedArticle(article); setView('article'); window.scrollTo(0,0); }} className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition cursor-pointer">
-                                                        <div className="h-48 relative">
-                                                            <img src={article.imageUrl || 'https://placehold.co/600x400'} className="w-full h-full object-cover"/>
-                                                            <span className="absolute top-2 left-2 bg-slate-900/80 text-white text-[10px] font-bold px-2 py-1 rounded uppercase">{article.category}</span>
-                                                        </div>
+                                                {filteredArticles.slice(1).map(a => (
+                                                    <div key={a.id} onClick={() => { setSelectedArticle(a); setView('article'); window.scrollTo(0,0); }} className={`rounded-xl shadow-sm overflow-hidden border cursor-pointer hover:shadow-md transition ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}>
+                                                        <img src={a.imageUrl || 'https://placehold.co/600x400'} className="w-full h-32 object-cover"/>
                                                         <div className="p-5">
-                                                            <h3 className="text-lg font-bold leading-tight mb-2 text-slate-900 line-clamp-2">{article.title}</h3>
-                                                            <p className="text-sm text-slate-500 line-clamp-2">{article.excerpt || article.content}</p>
-                                                            <div className="mt-4 flex items-center text-xs text-slate-400 gap-1">
-                                                                <Icons.Clock /> {article.dateString}
+                                                            <h3 className="font-bold text-lg leading-tight mb-2">{a.title}</h3>
+                                                            <p className="text-sm opacity-60 line-clamp-2">{a.excerpt}</p>
+                                                            <div className="mt-3 flex items-center gap-2 text-xs opacity-40">
+                                                                <Icons.Clock className="w-3 h-3"/> {a.dateString}
                                                             </div>
                                                         </div>
                                                     </div>
                                                 ))}
                                             </div>
                                         </div>
-
+                                        
                                         {/* Sidebar */}
                                         <aside className="lg:col-span-4 space-y-8">
-                                            <AdSpace label="Sidebar Ad (300x600)" />
-                                            <div className="bg-slate-900 text-white p-6 rounded-xl">
-                                                <h3 className="font-bold text-lg mb-2">Subscribe</h3>
-                                                <p className="text-sm text-slate-400 mb-4">Get the latest news delivered.</p>
-                                                <div className="flex gap-2">
-                                                    <input type="email" placeholder="Email..." className="w-full p-2 rounded text-black text-sm" />
-                                                    <button className="bg-red-600 px-3 rounded font-bold text-sm">Go</button>
+                                            {/* Trending Box */}
+                                            <div className={`p-6 rounded-xl shadow-sm border ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                                                <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-red-600"><Icons.Trending className="w-5 h-5"/> Trending Now</h3>
+                                                <div className="space-y-4">
+                                                    {articles.slice(0,5).map((a,i) => (
+                                                        <div key={a.id} onClick={() => { setSelectedArticle(a); setView('article'); }} className="flex gap-3 cursor-pointer group">
+                                                            <span className="text-3xl font-black opacity-20 group-hover:text-red-600 transition">{i+1}</span>
+                                                            <div>
+                                                                <span className="text-sm font-medium line-clamp-2 group-hover:text-red-600 transition">{a.title}</span>
+                                                                <span className="text-xs opacity-40 block mt-1">{a.category}</span>
+                                                            </div>
+                                                        </div>
+                                                    ))}
                                                 </div>
+                                            </div>
+                                            
+                                            {/* Subscription Box */}
+                                            <div className="bg-slate-900 text-white p-8 rounded-xl relative overflow-hidden">
+                                                <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-red-600 rounded-full opacity-20 blur-3xl"></div>
+                                                <h3 className="font-bold text-xl mb-2 relative z-10">Subscribe</h3>
+                                                <p className="text-sm text-slate-400 mb-6 relative z-10">Join 50,000+ readers. Get the daily brief.</p>
+                                                <div className="flex gap-2 relative z-10">
+                                                    <input value={subEmail} onChange={e=>setSubEmail(e.target.value)} type="email" placeholder="Email address" className="w-full p-3 rounded-lg text-black text-sm outline-none" />
+                                                    <button onClick={handleSubscribe} className="bg-red-600 px-4 rounded-lg font-bold text-sm hover:bg-red-500 transition">
+                                                        {subStatus==='success' ? <Icons.Check className="w-4 h-4"/> : 'Join'}
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Ad Space */}
+                                            <div className={`h-64 rounded-xl flex flex-col items-center justify-center text-xs uppercase tracking-widest border border-dashed ${darkMode ? 'bg-slate-800 border-slate-700 text-slate-500' : 'bg-slate-100 border-slate-300 text-slate-400'}`}>
+                                                Advertisement Space
                                             </div>
                                         </aside>
                                     </div>
@@ -282,27 +418,75 @@
                             </>
                         )}
 
-                        {/* Article Reader */}
+                        {/* ARTICLE READER */}
                         {view === 'article' && selectedArticle && (
-                            <div className="max-w-3xl mx-auto bg-white p-6 md:p-10 rounded-xl shadow-sm border border-slate-100">
-                                <button onClick={() => setView('home')} className="text-red-600 font-bold mb-6 text-sm hover:underline">← Back to News</button>
-                                <h1 className="text-3xl md:text-5xl font-serif font-bold mb-6 leading-tight text-slate-900">{selectedArticle.title}</h1>
-                                <div className="flex items-center justify-between border-y border-slate-100 py-4 mb-8">
-                                    <div className="flex items-center gap-3 text-sm text-slate-500">
-                                        <span className="bg-red-100 text-red-700 px-2 py-1 rounded font-bold uppercase text-xs">{selectedArticle.category}</span>
+                            <div className={`max-w-3xl mx-auto p-8 md:p-12 rounded-xl shadow-sm border ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}>
+                                <button onClick={() => setView('home')} className="text-red-600 font-bold mb-8 text-sm hover:underline">← Back to Home</button>
+                                <h1 className="text-3xl md:text-5xl font-serif font-bold mb-6 leading-tight">{selectedArticle.title}</h1>
+                                <div className="flex justify-between text-sm opacity-60 mb-8 pb-6 border-b border-slate-200 dark:border-slate-700">
+                                    <div className="flex gap-3 items-center">
+                                        <span className="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold uppercase">{selectedArticle.category}</span>
                                         <span>{selectedArticle.dateString}</span>
                                     </div>
-                                    <button onClick={handleShare} className="flex items-center gap-2 hover:text-red-600 font-bold text-sm"><Icons.Share/> Share</button>
+                                    <button onClick={()=>{navigator.clipboard.writeText(window.location.href); alert("Link Copied!")}} className="flex items-center gap-2 hover:text-red-600 font-bold"><Icons.Share className="w-4 h-4"/> Share</button>
                                 </div>
                                 <img src={selectedArticle.imageUrl} className="w-full rounded-xl mb-10 shadow-lg" onError={(e) => e.target.src='https://placehold.co/800x500'}/>
-                                <div className="prose prose-lg max-w-none text-slate-800 leading-relaxed whitespace-pre-line font-serif">
+                                <div className="prose prose-lg max-w-none text-lg leading-relaxed whitespace-pre-wrap font-serif opacity-90">
                                     {selectedArticle.content}
                                 </div>
                             </div>
                         )}
+                    </main>
 
-                        {/* Login Page (Secretly accessed from Footer) */}
-                        {view === 'login' && (
-                            <div className="max-w-sm mx-auto bg-white p-8 rounded-xl shadow-xl border mt-10">
-                                <h2 className="text-2xl font-bold mb-6 text-center">Staff Login</h2>
-                                <div className="bg-yellow-50 text-yellow-800 text-xs p-2 rounded mb-4 text
+                    {/* 5. FULL FOOTER */}
+                    {view === 'home' && (
+                        <footer className="bg-slate-950 text-slate-400 py-16 mt-12 border-t border-slate-900">
+                            <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-12">
+                                <div className="md:col-span-2">
+                                    <div className="flex items-center gap-2 mb-6">
+                                        <div className="bg-red-600 text-white px-1 font-black italic transform -skew-x-12">VP</div>
+                                        <span className="font-serif text-2xl font-bold text-white">Velocity<span className="text-red-600">Press</span></span>
+                                    </div>
+                                    <p className="mb-6 max-w-sm text-sm leading-relaxed opacity-70">
+                                        The world's most reliable digital news platform. We are dedicated to providing unbiased, lightning-fast, and accurate news coverage from every corner of the globe.
+                                    </p>
+                                    <div className="flex gap-4">
+                                        <a href="mailto:mswadi6238@gmail.com" className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center hover:bg-red-600 text-white transition-all"><Icons.Mail className="w-5 h-5"/></a>
+                                        <button onClick={() => {navigator.clipboard.writeText(window.location.href); alert("Link Copied")}} className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center hover:bg-red-600 text-white transition-all"><Icons.Share className="w-5 h-5"/></button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h4 className="text-white font-bold uppercase text-xs mb-6 tracking-wider">Sections</h4>
+                                    <ul className="space-y-3 text-sm opacity-70">
+                                        <li className="hover:text-white cursor-pointer transition" onClick={()=>{setActiveCategory('Football');window.scrollTo(0,0)}}>Football</li>
+                                        <li className="hover:text-white cursor-pointer transition" onClick={()=>{setActiveCategory('World');window.scrollTo(0,0)}}>World News</li>
+                                        <li className="hover:text-white cursor-pointer transition" onClick={()=>{setActiveCategory('Tech');window.scrollTo(0,0)}}>Technology</li>
+                                        <li className="hover:text-white cursor-pointer transition" onClick={()=>{setActiveCategory('Business');window.scrollTo(0,0)}}>Business</li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 className="text-white font-bold uppercase text-xs mb-6 tracking-wider">Company</h4>
+                                    <ul className="space-y-3 text-sm opacity-70">
+                                        <li className="hover:text-white cursor-pointer transition">About Us</li>
+                                        <li className="hover:text-white cursor-pointer transition">Careers</li>
+                                        <li className="hover:text-white cursor-pointer transition">Privacy Policy</li>
+                                        <li className="hover:text-white cursor-pointer transition">Advertise</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div className="text-center text-xs mt-16 pt-8 border-t border-slate-900 opacity-40 flex justify-center gap-4">
+                                <span>© 2024 VelocityPress Media Group. All rights reserved.</span>
+                            </div>
+                        </footer>
+                    )}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
+
+
