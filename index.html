@@ -3,11 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VelocityPress</title>
+    <title>VelocityPress - Global News</title>
+    
+    <!-- 1. TAILWIND CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { darkMode: 'class' }</script>
+
+    <!-- 2. FONTS -->
     <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700;900&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        body { font-family: 'Inter', sans-serif; }
         h1, h2, h3, .font-serif { font-family: 'Merriweather', serif; }
         .fade-in { animation: fadeIn 0.5s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -17,34 +23,36 @@
         .glass-nav { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid #e2e8f0; }
         .dark .glass-nav { background: rgba(15, 23, 42, 0.95); border-bottom: 1px solid #334155; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
+        
+        /* Loader */
+        #loader { position: fixed; inset: 0; background: #f8fafc; display: flex; justify-content: center; align-items: center; z-index: 9999; flex-direction: column; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top: 4px solid #dc2626; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
-    
-    <!-- IMPORT MAP: The Modern Way -->
-    <script type="importmap">
-    {
-      "imports": {
-        "react": "https://esm.sh/react@18.2.0",
-        "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-        "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
-        "firebase/auth": "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js",
-        "firebase/firestore": "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"
-      }
-    }
-    </script>
-    <!-- BABEL (Standalone) -->
+
+    <!-- 3. LIBRARIES (UMD - No Modules) -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- 4. FIREBASE (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
 <body class="bg-slate-50 text-slate-900 transition-colors duration-300">
 
+    <div id="loader">
+        <div class="spinner"></div>
+        <p style="margin-top: 15px; color: #64748b;">Starting VelocityPress...</p>
+    </div>
+
     <div id="root"></div>
 
-    <script type="text/babel" data-type="module">
-        import React, { useState, useEffect } from 'react';
-        import { createRoot } from 'react-dom/client';
-        import { initializeApp } from 'firebase/app';
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
-        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-
+    <script type="text/babel">
+        // --- GLOBAL VARIABLES ---
+        const { useState, useEffect } = React;
+        
         // --- ICONS ---
         const Icon = ({ p, className="" }) => (
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d={p} /></svg>
@@ -61,11 +69,11 @@
             Clock: () => <Icon p="M12 2v10l4 2" />,
             User: () => <Icon p="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" />,
             Edit: () => <Icon p="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />,
-            Trash: () => <Icon p="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />,
-            Pencil: () => <Icon p="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+            Pencil: () => <Icon p="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />,
+            Trash: () => <Icon p="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
         };
 
-        // --- CONFIG ---
+        // --- FIREBASE INIT ---
         const firebaseConfig = {
             apiKey: "AIzaSyAVzkZyN15MRyggVl7pQdGaz-tXxvGmMwM",
             authDomain: "velocity-press.firebaseapp.com",
@@ -76,9 +84,9 @@
             measurementId: "G-PFD81KRVZQ"
         };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
+        if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+        const db = firebase.firestore();
+        const auth = firebase.auth();
 
         // --- APP ---
         function App() {
@@ -86,32 +94,37 @@
             const [menuOpen, setMenuOpen] = useState(false);
             const [darkMode, setDarkMode] = useState(false);
             const [activeCategory, setActiveCategory] = useState('All');
+            
             const [user, setUser] = useState(null);
             const [articles, setArticles] = useState([]);
             const [tickerText, setTickerText] = useState("Welcome to VelocityPress...");
             const [selectedArticle, setSelectedArticle] = useState(null);
+            
             const [email, setEmail] = useState('');
             const [password, setPassword] = useState('');
             const [authError, setAuthError] = useState('');
             const [subEmail, setSubEmail] = useState('');
             const [subStatus, setSubStatus] = useState('idle');
+            
             const [formData, setFormData] = useState({ title: '', category: 'Football', imageUrl: '', content: '', excerpt: '' });
             const [uploadStatus, setUploadStatus] = useState('');
             const [newTicker, setNewTicker] = useState('');
             const [editingId, setEditingId] = useState(null);
 
+            // --- EFFECTS ---
             useEffect(() => {
-                onAuthStateChanged(auth, u => setUser(u));
-                if (!auth.currentUser) signInAnonymously(auth).catch(console.error);
+                // REMOVE LOADER
+                document.getElementById('loader').style.display = 'none';
 
-                onSnapshot(collection(db, 'velocity_articles'), (snapshot) => {
-                    const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-                    docs.sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+                auth.onAuthStateChanged(u => setUser(u));
+                
+                db.collection('velocity_articles').orderBy('timestamp', 'desc').onSnapshot(snap => {
+                    const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                     setArticles(docs);
                 });
 
-                onSnapshot(doc(db, 'velocity_settings', 'ticker'), (docSnap) => {
-                    if(docSnap.exists()) setTickerText(docSnap.data().text);
+                db.collection('velocity_settings').doc('ticker').onSnapshot(doc => {
+                    if(doc.exists) setTickerText(doc.data().text);
                 });
             }, []);
 
@@ -120,47 +133,51 @@
                 else document.body.classList.remove('dark');
             }, [darkMode]);
 
-            const handleLogin = async (e) => {
+            // --- HANDLERS ---
+            const handleLogin = (e) => {
                 e.preventDefault();
                 setAuthError('');
-                try {
-                    await signInWithEmailAndPassword(auth, email, password);
-                    setView('admin'); setMenuOpen(false);
-                } catch (err) { setAuthError("Invalid Login"); }
+                auth.signInWithEmailAndPassword(email, password)
+                    .then(() => { setView('admin'); setMenuOpen(false); })
+                    .catch(() => setAuthError("Invalid Login"));
             };
 
-            const handlePublish = async (e) => {
+            const handlePublish = (e) => {
                 e.preventDefault();
                 if (!formData.title) return;
                 setUploadStatus(editingId ? 'Updating...' : 'Publishing...');
                 
                 const data = {
                     ...formData,
-                    timestamp: serverTimestamp(),
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                     dateString: new Date().toLocaleDateString(),
                     authorId: user?.uid
                 };
 
-                try {
-                    if (editingId) {
-                        await updateDoc(doc(db, 'velocity_articles', editingId), data);
-                        setUploadStatus('Updated!');
-                    } else {
-                        await addDoc(collection(db, 'velocity_articles'), data);
-                        setUploadStatus('Published!');
-                    }
-                    setTimeout(() => { 
-                        setUploadStatus(''); 
-                        setFormData({ title: '', category: 'Football', imageUrl: '', content: '', excerpt: '' });
-                        setEditingId(null);
-                    }, 1500);
-                } catch(err) { setUploadStatus('Error'); }
+                if (editingId) {
+                    db.collection('velocity_articles').doc(editingId).update(data)
+                      .then(() => {
+                          setUploadStatus('Updated!');
+                          setTimeout(() => resetForm(), 1500);
+                      });
+                } else {
+                    db.collection('velocity_articles').add(data)
+                      .then(() => {
+                          setUploadStatus('Published!');
+                          setTimeout(() => resetForm(), 1500);
+                      });
+                }
             };
 
-            const handleDelete = async (id) => {
-                if(confirm("Delete?")) {
-                    try { await deleteDoc(doc(db, 'velocity_articles', id)); } 
-                    catch(e) { alert("Error"); }
+            const resetForm = () => {
+                setUploadStatus('');
+                setFormData({ title: '', category: 'Football', imageUrl: '', content: '', excerpt: '' });
+                setEditingId(null);
+            };
+
+            const handleDelete = (id) => {
+                if(confirm("Delete article?")) {
+                    db.collection('velocity_articles').doc(id).delete();
                 }
             };
 
@@ -170,25 +187,22 @@
                 window.scrollTo(0, 0);
             };
 
-            const handleUpdateTicker = async () => {
+            const handleUpdateTicker = () => {
                 if(!newTicker) return;
-                try {
-                    await setDoc(doc(db, 'velocity_settings', 'ticker'), { text: newTicker });
-                    alert("Ticker Updated"); setNewTicker('');
-                } catch(e) { alert("Error"); }
+                db.collection('velocity_settings').doc('ticker').set({ text: newTicker })
+                  .then(() => { alert("Ticker Updated"); setNewTicker(''); });
             };
 
-            const handleSubscribe = async () => {
+            const handleSubscribe = () => {
                 if (!subEmail.includes('@')) return alert("Invalid Email");
                 setSubStatus('loading');
-                try {
-                    await addDoc(collection(db, 'velocity_subscribers'), { email: subEmail, timestamp: serverTimestamp() });
-                    setSubStatus('success'); setSubEmail(''); setTimeout(() => setSubStatus('idle'), 2000);
-                } catch(e) { setSubStatus('idle'); }
+                db.collection('velocity_subscribers').add({ email: subEmail, timestamp: firebase.firestore.FieldValue.serverTimestamp() })
+                  .then(() => { setSubStatus('success'); setSubEmail(''); setTimeout(() => setSubStatus('idle'), 2000); });
             };
 
             const filteredArticles = activeCategory === 'All' ? articles : articles.filter(a => a.category === activeCategory);
 
+            // --- RENDER ---
             return (
                 <div className={`min-h-screen flex flex-col ${darkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
                     
@@ -224,10 +238,10 @@
                                             <button key={cat} onClick={() => {setActiveCategory(cat); setView('home'); setMenuOpen(false);}} className="block w-full text-left text-slate-500 hover:text-red-600">{cat}</button>
                                         ))}
                                     </div>
-                                    {user && !user.isAnonymous ? (
+                                    {user ? (
                                         <>
                                             <button onClick={() => {setView('admin'); setMenuOpen(false)}} className="flex items-center gap-2 w-full text-left font-bold text-red-600 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg"><Icons.Trending className="w-4 h-4"/> Dashboard</button>
-                                            <button onClick={() => {signOut(auth); setView('home'); setMenuOpen(false)}} className="text-sm text-slate-400 block w-full text-left px-2">Log Out</button>
+                                            <button onClick={() => {auth.signOut(); setView('home'); setMenuOpen(false)}} className="text-sm text-slate-400 block w-full text-left px-2">Log Out</button>
                                         </>
                                     ) : (
                                         <button onClick={() => {setView('login'); setMenuOpen(false)}} className="flex items-center gap-2 w-full text-left font-medium text-slate-500 hover:text-red-600 px-2"><Icons.User className="w-4 h-4"/> Publisher Login</button>
@@ -282,8 +296,4 @@
                                     <div className="space-y-4">
                                         {articles.map(article => (
                                             <div key={article.id} className={`flex justify-between items-center p-4 rounded-lg border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
-                                                <div className="flex-1 pr-4">
-                                                    <h4 className="font-bold line-clamp-1">{article.title}</h4>
-                                                    <span className="text-xs opacity-50">{article.category}</span>
-                                                </div>
-                                                <div className="f
+               
