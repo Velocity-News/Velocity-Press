@@ -27,10 +27,10 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 
-    <!-- 2. LIBRARIES (Cloudflare & Unpkg) -->
-    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <!-- 2. LIBRARIES (Simplified Loading to prevent blocks) -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
     <!-- 3. FIREBASE (Compat Version) -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -39,23 +39,28 @@
 </head>
 <body class="bg-slate-50 text-slate-900 transition-colors duration-300">
 
-    <!-- LOADING SCREEN -->
-    <div id="loader" style="position:fixed; inset:0; background:#f8fafc; display:flex; justify-content:center; align-items:center; z-index:9999;">
-        <div style="text-align:center">
-            <div class="spinner"></div>
-            <p style="color:#64748b; font-family:sans-serif;">Loading VelocityPress...</p>
-            <button onclick="window.location.reload()" style="margin-top:20px; padding:8px 16px; background:#dc2626; color:white; border:none; border-radius:4px; cursor:pointer; display:none;" id="retryBtn">Retry Connection</button>
-        </div>
+    <!-- LOADING SCREEN (HTML Fallback) -->
+    <div id="loader" style="position:fixed; inset:0; background:#f8fafc; display:flex; justify-content:center; align-items:center; z-index:9999; flex-direction:column;">
+        <div class="spinner"></div>
+        <p id="loader-text" style="color:#64748b; font-family:sans-serif; margin-top:10px;">Initializing App...</p>
     </div>
 
     <div id="root" style="display:none;"></div>
 
+    <!-- SCRIPT CHECKER -->
     <script>
-        // Show retry button if stuck for 8 seconds
-        setTimeout(() => {
-            const btn = document.getElementById('retryBtn');
-            if(btn) btn.style.display = 'inline-block';
-        }, 8000);
+        window.onload = function() {
+            setTimeout(function() {
+                var missing = [];
+                if (typeof React === 'undefined') missing.push("React");
+                if (typeof ReactDOM === 'undefined') missing.push("ReactDOM");
+                if (typeof firebase === 'undefined') missing.push("Firebase");
+                
+                if (missing.length > 0) {
+                    document.getElementById('loader-text').innerHTML = "<span style='color:red'>Failed to load: " + missing.join(", ") + "</span><br><small>Check your internet connection</small>";
+                }
+            }, 5000);
+        };
     </script>
 
     <script type="text/babel">
@@ -63,6 +68,7 @@
         const Icon = ({ p, className="" }) => (
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d={p} /></svg>
         );
+        
         const Icons = {
             Menu: () => <Icon p="M4 6h16M4 12h16M4 18h16" />,
             X: () => <Icon p="M18 6 6 18M6 6l12 12" />,
@@ -90,18 +96,23 @@
             measurementId: "G-PFD81KRVZQ"
         };
 
-        // Initialize Firebase
-        if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+        // Init Firebase
+        try {
+            if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+        } catch(e) { console.error(e); }
+        
         const db = firebase.firestore();
         const auth = firebase.auth();
         const { useState, useEffect } = React;
 
-        // --- APP ---
+        // --- APP COMPONENT ---
         function App() {
+            // State
             const [view, setView] = useState('home'); 
             const [menuOpen, setMenuOpen] = useState(false);
             const [darkMode, setDarkMode] = useState(false);
             const [activeCategory, setActiveCategory] = useState('All');
+            
             const [user, setUser] = useState(null);
             const [articles, setArticles] = useState([]);
             const [tickerText, setTickerText] = useState("Welcome to VelocityPress...");
@@ -120,7 +131,7 @@
 
             // --- INIT ---
             useEffect(() => {
-                // Hide Loader once React Starts
+                // Hide Loader
                 const loader = document.getElementById('loader');
                 const root = document.getElementById('root');
                 if(loader) loader.style.display = 'none';
@@ -299,6 +310,4 @@
                                         <textarea placeholder="Excerpt" value={formData.excerpt} rows="2" className={`w-full border p-3 rounded ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`} onChange={e => setFormData({...formData, excerpt: e.target.value})}></textarea>
                                         <textarea placeholder="Content" value={formData.content} rows="10" className={`w-full border p-3 rounded font-serif ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`} onChange={e => setFormData({...formData, content: e.target.value})}></textarea>
                                         {uploadStatus && <p className="text-center text-green-500 font-bold bg-green-900/20 p-2 rounded">{uploadStatus}</p>}
-                                        <div className="flex gap-2">
-                                            <button onClick={handlePublish} className="flex-1 bg-red-600 text-white p-4 rounded-lg font-bold hover:bg-red-700 shadow-lg">{editingId ? 'Update' : 'Publish'}</button>
-     
+                                        <d
