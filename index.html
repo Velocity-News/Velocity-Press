@@ -62,7 +62,10 @@
             Trending: () => <Icon p="M23 6l-9.5 9.5-5-5L1 18" />,
             Lock: () => <Icon p="M12 15v2m-6 4h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2Zm10-10V7a4 4 0 0 0-8 0v4h8Z" />,
             Clock: () => <Icon p="M12 2v10l4 2" />,
-            User: () => <Icon p="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" />
+            User: () => <Icon p="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" />,
+            Edit: () => <Icon p="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />,
+            Pencil: () => <Icon p="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />,
+            Trash: () => <Icon p="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
         };
 
         // --- CONFIGURATION ---
@@ -100,10 +103,13 @@
             const [password, setPassword] = useState('');
             const [authError, setAuthError] = useState('');
             const [subEmail, setSubEmail] = useState('');
-            const [subStatus, setSubStatus] = useState('idle'); // idle, loading, success
+            const [subStatus, setSubStatus] = useState('idle'); 
+            
+            // EDITING STATE
             const [formData, setFormData] = useState({ title: '', category: 'Football', imageUrl: '', content: '', excerpt: '' });
             const [uploadStatus, setUploadStatus] = useState('');
             const [newTicker, setNewTicker] = useState('');
+            const [editingId, setEditingId] = useState(null); // Tracks if we are editing a specific article
 
             // --- INITIALIZATION ---
             useEffect(() => {
@@ -122,7 +128,7 @@
                 });
             }, []);
 
-            // Dark Mode Toggle
+            // Dark Mode Effect
             useEffect(() => {
                 if (darkMode) document.body.classList.add('dark');
                 else document.body.classList.remove('dark');
@@ -130,7 +136,7 @@
 
             // --- HANDLERS ---
 
-            // Login (Restricted to existing Firebase Users)
+            // Login
             const handleLogin = async (e) => {
                 e.preventDefault();
                 setAuthError('');
@@ -143,22 +149,64 @@
                 }
             };
 
-            // Upload News
+            // START EDITING (Fills form with existing data)
+            const startEdit = (article) => {
+                setFormData({
+                    title: article.title,
+                    category: article.category,
+                    imageUrl: article.imageUrl,
+                    content: article.content,
+                    excerpt: article.excerpt
+                });
+                setEditingId(article.id);
+                window.scrollTo(0, 0); // Scroll to top to see form
+            };
+
+            // CANCEL EDITING
+            const cancelEdit = () => {
+                setEditingId(null);
+                setFormData({ title: '', category: 'Football', imageUrl: '', content: '', excerpt: '' });
+            };
+
+            // DELETE ARTICLE
+            const handleDelete = async (id) => {
+                if(confirm("Are you sure you want to delete this article?")) {
+                    try {
+                        await db.collection('velocity_articles').doc(id).delete();
+                    } catch(e) { alert("Error deleting"); }
+                }
+            };
+
+            // PUBLISH / UPDATE
             const handlePublish = async (e) => {
                 e.preventDefault();
                 if (!formData.title) return;
-                setUploadStatus('Publishing...');
+                
+                setUploadStatus(editingId ? 'Updating...' : 'Publishing...');
+                
                 try {
-                    await db.collection('velocity_articles').add({
-                        ...formData,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                        dateString: new Date().toLocaleDateString(),
-                        authorId: user?.uid
-                    });
-                    setUploadStatus('Success!');
+                    if (editingId) {
+                        // UPDATE EXISTING
+                        await db.collection('velocity_articles').doc(editingId).update({
+                            ...formData,
+                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        setUploadStatus('Updated Successfully!');
+                    } else {
+                        // CREATE NEW
+                        await db.collection('velocity_articles').add({
+                            ...formData,
+                            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                            dateString: new Date().toLocaleDateString(),
+                            authorId: user?.uid
+                        });
+                        setUploadStatus('Published Successfully!');
+                    }
+                    
                     setTimeout(() => { 
                         setUploadStatus(''); 
                         setFormData({ title: '', category: 'Football', imageUrl: '', content: '', excerpt: '' });
+                        setEditingId(null);
                     }, 1500);
                 } catch(err) { setUploadStatus('Error'); }
             };
@@ -278,215 +326,16 @@
 
                         {/* ADMIN DASHBOARD */}
                         {view === 'admin' && (
-                            <div className={`max-w-3xl mx-auto p-8 rounded-xl shadow-xl border space-y-10 ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}>
+                            <div className={`max-w-4xl mx-auto p-8 rounded-xl shadow-xl border space-y-10 ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}>
                                 <div className="flex justify-between items-center border-b border-slate-700 pb-6">
                                     <h2 className="text-3xl font-serif font-bold">Publisher Studio</h2>
                                     <div className="text-xs text-slate-400">Logged in as {user?.email}</div>
                                 </div>
 
-                                {/* Ticker Update */}
-                                <div className="border-b border-slate-700 pb-8">
-                                    <h3 className="font-bold mb-4 flex items-center gap-2 text-red-600"><Icons.Trending className="w-5 h-5"/> Breaking News Ticker</h3>
-                                    <div className="flex gap-2">
-                                        <input placeholder="Type breaking news message here..." className={`w-full border p-3 rounded ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`} onChange={e => setNewTicker(e.target.value)}/>
-                                        <button onClick={handleUpdateTicker} className="bg-slate-700 text-white px-6 rounded font-bold">Update</button>
-                                    </div>
-                                </div>
-
-                                {/* Article Upload */}
+                                {/* 1. Write/Edit Form */}
                                 <div>
-                                    <h3 className="font-bold mb-4 text-xl">Write New Article</h3>
+                                    <h3 className="font-bold mb-4 text-xl">{editingId ? 'Edit Article' : 'Write New Article'}</h3>
                                     <div className="space-y-5">
-                                        <div>
-                                            <label className="text-xs font-bold uppercase text-slate-400">Headline</label>
-                                            <input className={`w-full border p-3 rounded ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`} onChange={e => setFormData({...formData, title: e.target.value})} />
-                                        </div>
-                                        
+                                        <input placeholder="Headline" value={formData.title} className={`w-full border p-3 rounded ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`} onChange={e => setFormData({...formData, title: e.target.value})} />
                                         <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="text-xs font-bold uppercase text-slate-400">Category</label>
-                                                <select className={`w-full border p-3 rounded ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`} onChange={e => setFormData({...formData, category: e.target.value})}>
-                                                    <option>Football</option><option>World</option><option>Tech</option><option>Business</option>
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="text-xs font-bold uppercase text-slate-400">Image URL</label>
-                                                <input className={`w-full border p-3 rounded ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`} onChange={e => setFormData({...formData, imageUrl: e.target.value})} />
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <label className="text-xs font-bold uppercase text-slate-400">Short Excerpt</label>
-                                            <textarea rows="2" className={`w-full border p-3 rounded ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`} onChange={e => setFormData({...formData, excerpt: e.target.value})}></textarea>
-                                        </div>
-
-                                        <div>
-                                            <label className="text-xs font-bold uppercase text-slate-400">Full Content</label>
-                                            <textarea rows="10" className={`w-full border p-3 rounded font-serif ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`} onChange={e => setFormData({...formData, content: e.target.value})}></textarea>
-                                        </div>
-                                        
-                                        {uploadStatus && <p className="text-center text-green-500 font-bold bg-green-900/20 p-2 rounded">{uploadStatus}</p>}
-                                        <button onClick={handlePublish} className="w-full bg-red-600 text-white p-4 rounded-lg font-bold hover:bg-red-700 shadow-lg">Publish Article</button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* HOME VIEW */}
-                        {view === 'home' && (
-                            <>
-                                {/* Category Pills (Mobile) */}
-                                <div className="md:hidden flex overflow-x-auto gap-2 pb-4 mb-4 no-scrollbar">
-                                    {['All', 'Football', 'World', 'Tech', 'Business'].map(cat => (
-                                        <button key={cat} onClick={() => setActiveCategory(cat)} className={`whitespace-nowrap px-4 py-2 rounded-full text-xs font-bold ${activeCategory===cat ? 'bg-red-600 text-white' : (darkMode ? 'bg-slate-800' : 'bg-slate-200')}`}>{cat}</button>
-                                    ))}
-                                </div>
-
-                                {articles.length === 0 ? (
-                                    <div className="text-center py-32 opacity-50">Loading latest news...</div>
-                                ) : (
-                                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                                        {/* Main Column */}
-                                        <div className="lg:col-span-8 space-y-8">
-                                            {/* Hero Article */}
-                                            {filteredArticles[0] && (
-                                                <div onClick={() => { setSelectedArticle(filteredArticles[0]); setView('article'); window.scrollTo(0,0); }} className="group cursor-pointer relative h-[400px] rounded-2xl overflow-hidden shadow-xl">
-                                                    <img src={filteredArticles[0].imageUrl || 'https://placehold.co/800x600'} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                                                    <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent opacity-90"></div>
-                                                    <div className="absolute bottom-0 left-0 p-6 md:p-8 z-20">
-                                                        <span className="bg-red-600 text-white text-xs font-bold px-3 py-1 rounded uppercase tracking-wider">{filteredArticles[0].category}</span>
-                                                        <h2 className="text-3xl md:text-4xl font-serif font-bold text-white mt-3 leading-tight">{filteredArticles[0].title}</h2>
-                                                        <p className="text-slate-200 line-clamp-2 hidden md:block mt-2">{filteredArticles[0].excerpt}</p>
-                                                    </div>
-                                                </div>
-                                            )}
-                                            {/* Grid Articles */}
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                {filteredArticles.slice(1).map(a => (
-                                                    <div key={a.id} onClick={() => { setSelectedArticle(a); setView('article'); window.scrollTo(0,0); }} className={`rounded-xl shadow-sm overflow-hidden border cursor-pointer hover:shadow-md transition ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}>
-                                                        <img src={a.imageUrl || 'https://placehold.co/600x400'} className="w-full h-32 object-cover"/>
-                                                        <div className="p-5">
-                                                            <h3 className="font-bold text-lg leading-tight mb-2">{a.title}</h3>
-                                                            <p className="text-sm opacity-60 line-clamp-2">{a.excerpt}</p>
-                                                            <div className="mt-3 flex items-center gap-2 text-xs opacity-40">
-                                                                <Icons.Clock className="w-3 h-3"/> {a.dateString}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        
-                                        {/* Sidebar */}
-                                        <aside className="lg:col-span-4 space-y-8">
-                                            {/* Trending Box */}
-                                            <div className={`p-6 rounded-xl shadow-sm border ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-                                                <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-red-600"><Icons.Trending className="w-5 h-5"/> Trending Now</h3>
-                                                <div className="space-y-4">
-                                                    {articles.slice(0,5).map((a,i) => (
-                                                        <div key={a.id} onClick={() => { setSelectedArticle(a); setView('article'); }} className="flex gap-3 cursor-pointer group">
-                                                            <span className="text-3xl font-black opacity-20 group-hover:text-red-600 transition">{i+1}</span>
-                                                            <div>
-                                                                <span className="text-sm font-medium line-clamp-2 group-hover:text-red-600 transition">{a.title}</span>
-                                                                <span className="text-xs opacity-40 block mt-1">{a.category}</span>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                            
-                                            {/* Subscription Box */}
-                                            <div className="bg-slate-900 text-white p-8 rounded-xl relative overflow-hidden">
-                                                <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-red-600 rounded-full opacity-20 blur-3xl"></div>
-                                                <h3 className="font-bold text-xl mb-2 relative z-10">Subscribe</h3>
-                                                <p className="text-sm text-slate-400 mb-6 relative z-10">Join 50,000+ readers. Get the daily brief.</p>
-                                                <div className="flex gap-2 relative z-10">
-                                                    <input value={subEmail} onChange={e=>setSubEmail(e.target.value)} type="email" placeholder="Email address" className="w-full p-3 rounded-lg text-black text-sm outline-none" />
-                                                    <button onClick={handleSubscribe} className="bg-red-600 px-4 rounded-lg font-bold text-sm hover:bg-red-500 transition">
-                                                        {subStatus==='success' ? <Icons.Check className="w-4 h-4"/> : 'Join'}
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            {/* Ad Space */}
-                                            <div className={`h-64 rounded-xl flex flex-col items-center justify-center text-xs uppercase tracking-widest border border-dashed ${darkMode ? 'bg-slate-800 border-slate-700 text-slate-500' : 'bg-slate-100 border-slate-300 text-slate-400'}`}>
-                                                Advertisement Space
-                                            </div>
-                                        </aside>
-                                    </div>
-                                )}
-                            </>
-                        )}
-
-                        {/* ARTICLE READER */}
-                        {view === 'article' && selectedArticle && (
-                            <div className={`max-w-3xl mx-auto p-8 md:p-12 rounded-xl shadow-sm border ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}>
-                                <button onClick={() => setView('home')} className="text-red-600 font-bold mb-8 text-sm hover:underline">← Back to Home</button>
-                                <h1 className="text-3xl md:text-5xl font-serif font-bold mb-6 leading-tight">{selectedArticle.title}</h1>
-                                <div className="flex justify-between text-sm opacity-60 mb-8 pb-6 border-b border-slate-200 dark:border-slate-700">
-                                    <div className="flex gap-3 items-center">
-                                        <span className="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold uppercase">{selectedArticle.category}</span>
-                                        <span>{selectedArticle.dateString}</span>
-                                    </div>
-                                    <button onClick={()=>{navigator.clipboard.writeText(window.location.href); alert("Link Copied!")}} className="flex items-center gap-2 hover:text-red-600 font-bold"><Icons.Share className="w-4 h-4"/> Share</button>
-                                </div>
-                                <img src={selectedArticle.imageUrl} className="w-full rounded-xl mb-10 shadow-lg" onError={(e) => e.target.src='https://placehold.co/800x500'}/>
-                                <div className="prose prose-lg max-w-none text-lg leading-relaxed whitespace-pre-wrap font-serif opacity-90">
-                                    {selectedArticle.content}
-                                </div>
-                            </div>
-                        )}
-                    </main>
-
-                    {/* 5. FULL FOOTER */}
-                    {view === 'home' && (
-                        <footer className="bg-slate-950 text-slate-400 py-16 mt-12 border-t border-slate-900">
-                            <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-12">
-                                <div className="md:col-span-2">
-                                    <div className="flex items-center gap-2 mb-6">
-                                        <div className="bg-red-600 text-white px-1 font-black italic transform -skew-x-12">VP</div>
-                                        <span className="font-serif text-2xl font-bold text-white">Velocity<span className="text-red-600">Press</span></span>
-                                    </div>
-                                    <p className="mb-6 max-w-sm text-sm leading-relaxed opacity-70">
-                                        The world's most reliable digital news platform. We are dedicated to providing unbiased, lightning-fast, and accurate news coverage from every corner of the globe.
-                                    </p>
-                                    <div className="flex gap-4">
-                                        <a href="mailto:mswadi6238@gmail.com" className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center hover:bg-red-600 text-white transition-all"><Icons.Mail className="w-5 h-5"/></a>
-                                        <button onClick={() => {navigator.clipboard.writeText(window.location.href); alert("Link Copied")}} className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center hover:bg-red-600 text-white transition-all"><Icons.Share className="w-5 h-5"/></button>
-                                    </div>
-                                </div>
-                                <div>
-                                    <h4 className="text-white font-bold uppercase text-xs mb-6 tracking-wider">Sections</h4>
-                                    <ul className="space-y-3 text-sm opacity-70">
-                                        <li className="hover:text-white cursor-pointer transition" onClick={()=>{setActiveCategory('Football');window.scrollTo(0,0)}}>Football</li>
-                                        <li className="hover:text-white cursor-pointer transition" onClick={()=>{setActiveCategory('World');window.scrollTo(0,0)}}>World News</li>
-                                        <li className="hover:text-white cursor-pointer transition" onClick={()=>{setActiveCategory('Tech');window.scrollTo(0,0)}}>Technology</li>
-                                        <li className="hover:text-white cursor-pointer transition" onClick={()=>{setActiveCategory('Business');window.scrollTo(0,0)}}>Business</li>
-                                    </ul>
-                                </div>
-                                <div>
-                                    <h4 className="text-white font-bold uppercase text-xs mb-6 tracking-wider">Company</h4>
-                                    <ul className="space-y-3 text-sm opacity-70">
-                                        <li className="hover:text-white cursor-pointer transition">About Us</li>
-                                        <li className="hover:text-white cursor-pointer transition">Careers</li>
-                                        <li className="hover:text-white cursor-pointer transition">Privacy Policy</li>
-                                        <li className="hover:text-white cursor-pointer transition">Advertise</li>
-                                    </ul>
-                                </div>
-                            </div>
-                            <div className="text-center text-xs mt-16 pt-8 border-t border-slate-900 opacity-40 flex justify-center gap-4">
-                                <span>© 2024 VelocityPress Media Group. All rights reserved.</span>
-                            </div>
-                        </footer>
-                    )}
-                </div>
-            );
-        }
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
-</body>
-</html>
-
-
+                      
