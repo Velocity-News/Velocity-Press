@@ -5,50 +5,46 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VelocityPress - Global News</title>
     
-    <!-- 1. STYLES & CONFIG -->
-    <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        tailwind.config = { darkMode: 'class' }
+        window.onerror = function(msg, url, line, col, error) {
+            document.body.innerHTML = '<div style="color:red; padding:20px; text-align:center; font-family:sans-serif;"><h1>⚠️ Error</h1><p>'+msg+'</p><p>Line: '+line+'</p></div>';
+        };
     </script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { darkMode: 'class' }</script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
     <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700;900&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     
     <style>
         body { font-family: 'Inter', sans-serif; }
         h1, h2, h3, .font-serif { font-family: 'Merriweather', serif; }
-        
-        /* Smooth Fade In */
         .fade-in { animation: fadeIn 0.5s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        
-        /* Ticker Animation */
         .ticker-wrap { overflow: hidden; white-space: nowrap; }
         .ticker { display: inline-block; animation: marquee 40s linear infinite; }
         @keyframes marquee { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
-        
-        /* Professional Glass Nav */
         .glass-nav { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid #e2e8f0; }
         .dark .glass-nav { background: rgba(15, 23, 42, 0.95); border-bottom: 1px solid #334155; }
-        
-        /* Hide Scrollbar but keep functionality */
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
-
-    <!-- 2. ROBUST LIBRARIES (Cloudflare for Mobile Stability) -->
-    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
-    
-    <!-- 3. FIREBASE (Compat Version) -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
 <body class="bg-slate-50 text-slate-900 transition-colors duration-300">
-    <div id="root"></div>
+    <div id="root">
+        <div style="height:100vh; display:flex; justify-content:center; align-items:center; color:#94a3b8;">
+            Loading VelocityPress...
+        </div>
+    </div>
 
     <script type="text/babel">
-        // --- ICONS (SVG Paths) ---
+        // --- ICONS ---
         const Icon = ({ p, className="" }) => (
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d={p} /></svg>
         );
@@ -68,7 +64,7 @@
             Trash: () => <Icon p="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
         };
 
-        // --- CONFIGURATION ---
+        // --- KEYS ---
         const firebaseConfig = {
             apiKey: "AIzaSyAVzkZyN15MRyggVl7pQdGaz-tXxvGmMwM",
             authDomain: "velocity-press.firebaseapp.com",
@@ -79,130 +75,80 @@
             measurementId: "G-PFD81KRVZQ"
         };
 
-        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        // Init
+        if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
         const db = firebase.firestore();
         const auth = firebase.auth();
         const { useState, useEffect } = React;
 
         // --- APP ---
         function App() {
-            // UI State
             const [view, setView] = useState('home'); 
             const [menuOpen, setMenuOpen] = useState(false);
             const [darkMode, setDarkMode] = useState(false);
             const [activeCategory, setActiveCategory] = useState('All');
-            
-            // Data State
             const [user, setUser] = useState(null);
             const [articles, setArticles] = useState([]);
-            const [tickerText, setTickerText] = useState("Welcome to VelocityPress - Global Breaking News...");
+            const [tickerText, setTickerText] = useState("Welcome to VelocityPress...");
             const [selectedArticle, setSelectedArticle] = useState(null);
             
-            // Admin/Form State
+            // Forms
             const [email, setEmail] = useState('');
             const [password, setPassword] = useState('');
             const [authError, setAuthError] = useState('');
             const [subEmail, setSubEmail] = useState('');
-            const [subStatus, setSubStatus] = useState('idle'); 
-            
-            // EDITING STATE
+            const [subStatus, setSubStatus] = useState('idle');
             const [formData, setFormData] = useState({ title: '', category: 'Football', imageUrl: '', content: '', excerpt: '' });
             const [uploadStatus, setUploadStatus] = useState('');
             const [newTicker, setNewTicker] = useState('');
-            const [editingId, setEditingId] = useState(null); // Tracks if we are editing a specific article
+            const [editingId, setEditingId] = useState(null);
 
-            // --- INITIALIZATION ---
             useEffect(() => {
-                // 1. Auth Listener
                 auth.onAuthStateChanged(u => setUser(u));
-                
-                // 2. Load Articles (Real-time)
                 db.collection('velocity_articles').orderBy('timestamp', 'desc').onSnapshot(snap => {
                     const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                     setArticles(docs);
                 });
-
-                // 3. Load Ticker (Real-time)
                 db.collection('velocity_settings').doc('ticker').onSnapshot(doc => {
                     if(doc.exists) setTickerText(doc.data().text);
                 });
             }, []);
 
-            // Dark Mode Effect
             useEffect(() => {
                 if (darkMode) document.body.classList.add('dark');
                 else document.body.classList.remove('dark');
             }, [darkMode]);
 
-            // --- HANDLERS ---
-
-            // Login
+            // --- ACTIONS ---
             const handleLogin = async (e) => {
                 e.preventDefault();
                 setAuthError('');
                 try {
                     await auth.signInWithEmailAndPassword(email, password);
-                    setView('admin'); 
-                    setMenuOpen(false);
-                } catch (err) {
-                    setAuthError("Access Denied: Invalid Credentials");
-                }
+                    setView('admin'); setMenuOpen(false);
+                } catch (err) { setAuthError("Invalid Login"); }
             };
 
-            // START EDITING (Fills form with existing data)
-            const startEdit = (article) => {
-                setFormData({
-                    title: article.title,
-                    category: article.category,
-                    imageUrl: article.imageUrl,
-                    content: article.content,
-                    excerpt: article.excerpt
-                });
-                setEditingId(article.id);
-                window.scrollTo(0, 0); // Scroll to top to see form
-            };
-
-            // CANCEL EDITING
-            const cancelEdit = () => {
-                setEditingId(null);
-                setFormData({ title: '', category: 'Football', imageUrl: '', content: '', excerpt: '' });
-            };
-
-            // DELETE ARTICLE
-            const handleDelete = async (id) => {
-                if(confirm("Are you sure you want to delete this article?")) {
-                    try {
-                        await db.collection('velocity_articles').doc(id).delete();
-                    } catch(e) { alert("Error deleting"); }
-                }
-            };
-
-            // PUBLISH / UPDATE
             const handlePublish = async (e) => {
                 e.preventDefault();
                 if (!formData.title) return;
-                
                 setUploadStatus(editingId ? 'Updating...' : 'Publishing...');
                 
                 try {
                     if (editingId) {
-                        // UPDATE EXISTING
                         await db.collection('velocity_articles').doc(editingId).update({
-                            ...formData,
-                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                            ...formData, updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                         });
-                        setUploadStatus('Updated Successfully!');
+                        setUploadStatus('Updated!');
                     } else {
-                        // CREATE NEW
                         await db.collection('velocity_articles').add({
                             ...formData,
                             timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                             dateString: new Date().toLocaleDateString(),
                             authorId: user?.uid
                         });
-                        setUploadStatus('Published Successfully!');
+                        setUploadStatus('Published!');
                     }
-                    
                     setTimeout(() => { 
                         setUploadStatus(''); 
                         setFormData({ title: '', category: 'Football', imageUrl: '', content: '', excerpt: '' });
@@ -211,18 +157,29 @@
                 } catch(err) { setUploadStatus('Error'); }
             };
 
-            // Update Ticker
+            const handleDelete = async (id) => {
+                if(confirm("Delete this article?")) {
+                    try { await db.collection('velocity_articles').doc(id).delete(); } 
+                    catch(e) { alert("Error deleting"); }
+                }
+            };
+
+            const startEdit = (article) => {
+                setFormData({ title: article.title, category: article.category, imageUrl: article.imageUrl, content: article.content, excerpt: article.excerpt });
+                setEditingId(article.id);
+                window.scrollTo(0, 0);
+            };
+
             const handleUpdateTicker = async () => {
                 if(!newTicker) return;
                 try {
                     await db.collection('velocity_settings').doc('ticker').set({ text: newTicker });
                     alert("Ticker Updated"); setNewTicker('');
-                } catch(e) { alert("Error updating ticker"); }
+                } catch(e) { alert("Error"); }
             };
 
-            // Subscription
             const handleSubscribe = async () => {
-                if (!subEmail || !subEmail.includes('@')) return alert("Invalid Email");
+                if (!subEmail.includes('@')) return alert("Invalid Email");
                 setSubStatus('loading');
                 try {
                     await db.collection('velocity_subscribers').add({ email: subEmail, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
@@ -230,37 +187,30 @@
                 } catch(e) { setSubStatus('idle'); }
             };
 
+            // FIX: Renamed 'filtered' to 'filteredArticles' to match usage
             const filteredArticles = activeCategory === 'All' ? articles : articles.filter(a => a.category === activeCategory);
 
-            // --- RENDER ---
             return (
                 <div className={`min-h-screen flex flex-col ${darkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
                     
-                    {/* 1. TICKER BAR */}
                     <div className="bg-slate-900 text-white py-2 px-4 flex items-center overflow-hidden whitespace-nowrap text-sm font-medium sticky top-0 z-50 shadow-md">
                         <span className="bg-red-600 text-xs font-bold px-2 py-0.5 mr-4 rounded animate-pulse shrink-0">LIVE</span>
                         <div className="ticker-wrap w-full"><div className="ticker">{tickerText}</div></div>
                     </div>
 
-                    {/* 2. NAVBAR */}
                     <nav className="glass-nav sticky top-9 z-40 px-4 h-16 flex items-center justify-between">
-                        {/* Logo */}
                         <div onClick={() => setView('home')} className="flex items-center cursor-pointer group">
                             <div className="bg-red-600 text-white px-1 mr-2 font-black italic text-lg transform -skew-x-12">VP</div>
                             <span className="font-serif text-2xl font-bold tracking-tight">Velocity<span className="text-red-600">Press</span></span>
                         </div>
-
-                        {/* Controls */}
                         <div className="flex items-center gap-4">
                             <button onClick={() => setDarkMode(!darkMode)} className={`p-2 rounded-full ${darkMode ? 'bg-slate-800 text-yellow-400' : 'bg-slate-200 text-slate-600'}`}>
                                 {darkMode ? <Icons.Sun className="w-5 h-5"/> : <Icons.Moon className="w-5 h-5"/>}
                             </button>
-                            {/* Hamburger Menu */}
                             <button onClick={() => setMenuOpen(true)} className="p-1"><Icons.Menu className="w-8 h-8"/></button>
                         </div>
                     </nav>
 
-                    {/* 3. SLIDE-OUT MENU (Top Right) */}
                     {menuOpen && (
                         <div className="fixed inset-0 bg-black/50 z-50" onClick={() => setMenuOpen(false)}>
                             <div className={`absolute top-0 right-0 w-72 h-full p-6 shadow-2xl flex flex-col ${darkMode ? 'bg-slate-900' : 'bg-white'}`} onClick={e => e.stopPropagation()}>
@@ -270,72 +220,68 @@
                                 </div>
                                 <nav className="space-y-4">
                                     <button onClick={() => {setView('home'); setMenuOpen(false)}} className="block w-full text-left font-bold text-lg">Home</button>
-                                    
                                     <div className="border-t border-b py-4 border-slate-200 dark:border-slate-700 space-y-3">
                                         {['Football', 'World', 'Tech', 'Business'].map(cat => (
                                             <button key={cat} onClick={() => {setActiveCategory(cat); setView('home'); setMenuOpen(false);}} className="block w-full text-left text-slate-500 hover:text-red-600">{cat}</button>
                                         ))}
                                     </div>
-
-                                    {/* Admin Access Logic */}
                                     {user ? (
                                         <>
-                                            <button onClick={() => {setView('admin'); setMenuOpen(false)}} className="flex items-center gap-2 w-full text-left font-bold text-red-600 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
-                                                <Icons.Trending className="w-4 h-4"/> Publisher Dashboard
-                                            </button>
+                                            <button onClick={() => {setView('admin'); setMenuOpen(false)}} className="flex items-center gap-2 w-full text-left font-bold text-red-600 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg"><Icons.Trending className="w-4 h-4"/> Dashboard</button>
                                             <button onClick={() => {auth.signOut(); setView('home'); setMenuOpen(false)}} className="text-sm text-slate-400 block w-full text-left px-2">Log Out</button>
                                         </>
                                     ) : (
-                                        <button onClick={() => {setView('login'); setMenuOpen(false)}} className="flex items-center gap-2 w-full text-left font-medium text-slate-500 hover:text-red-600 px-2">
-                                            <Icons.User className="w-4 h-4"/> Publisher Login
-                                        </button>
+                                        <button onClick={() => {setView('login'); setMenuOpen(false)}} className="flex items-center gap-2 w-full text-left font-medium text-slate-500 hover:text-red-600 px-2"><Icons.User className="w-4 h-4"/> Publisher Login</button>
                                     )}
                                 </nav>
                             </div>
                         </div>
                     )}
 
-                    {/* 4. MAIN CONTENT */}
                     <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-6 fade-in">
                         
-                        {/* LOGIN VIEW (Secure, No Signup) */}
                         {view === 'login' && (
                             <div className={`max-w-sm mx-auto p-8 rounded-xl shadow-xl border mt-10 ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}>
                                 <h2 className="text-2xl font-bold mb-2 text-center">Publisher Access</h2>
-                                <p className="text-center text-sm text-slate-500 mb-6">Restricted to authorized staff only.</p>
-                                
-                                <form onSubmit={handleLogin} className="space-y-4">
-                                    <div>
-                                        <label className="text-xs font-bold uppercase text-slate-400">Email</label>
-                                        <input type="email" required value={email} onChange={e=>setEmail(e.target.value)} className={`w-full border p-3 rounded ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`} placeholder="admin@velocity.com" />
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-bold uppercase text-slate-400">Password</label>
-                                        <input type="password" required value={password} onChange={e=>setPassword(e.target.value)} className={`w-full border p-3 rounded ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`} placeholder="••••••••" />
-                                    </div>
-                                    
+                                <form onSubmit={handleLogin} className="space-y-4 mt-6">
+                                    <input type="email" required value={email} onChange={e=>setEmail(e.target.value)} className={`w-full border p-3 rounded ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`} placeholder="admin@velocity.com" />
+                                    <input type="password" required value={password} onChange={e=>setPassword(e.target.value)} className={`w-full border p-3 rounded ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`} placeholder="••••••••" />
                                     {authError && <p className="text-red-500 text-xs text-center bg-red-50 p-2 rounded">{authError}</p>}
-                                    
-                                    <button className="w-full bg-red-600 text-white p-3 rounded font-bold hover:bg-red-700 transition shadow-lg">
-                                        Login
-                                    </button>
+                                    <button className="w-full bg-red-600 text-white p-3 rounded font-bold hover:bg-red-700 shadow-lg">Login</button>
                                 </form>
                                 <button onClick={()=>setView('home')} className="w-full text-center mt-4 text-sm text-slate-400">Cancel</button>
                             </div>
                         )}
 
-                        {/* ADMIN DASHBOARD */}
                         {view === 'admin' && (
                             <div className={`max-w-4xl mx-auto p-8 rounded-xl shadow-xl border space-y-10 ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}>
                                 <div className="flex justify-between items-center border-b border-slate-700 pb-6">
                                     <h2 className="text-3xl font-serif font-bold">Publisher Studio</h2>
                                     <div className="text-xs text-slate-400">Logged in as {user?.email}</div>
                                 </div>
-
-                                {/* 1. Write/Edit Form */}
                                 <div>
                                     <h3 className="font-bold mb-4 text-xl">{editingId ? 'Edit Article' : 'Write New Article'}</h3>
                                     <div className="space-y-5">
                                         <input placeholder="Headline" value={formData.title} className={`w-full border p-3 rounded ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`} onChange={e => setFormData({...formData, title: e.target.value})} />
                                         <div className="grid grid-cols-2 gap-4">
-                      
+                                            <select value={formData.category} className={`w-full border p-3 rounded ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`} onChange={e => setFormData({...formData, category: e.target.value})}>
+                                                <option>Football</option><option>World</option><option>Tech</option><option>Business</option>
+                                            </select>
+                                            <input placeholder="Image URL" value={formData.imageUrl} className={`w-full border p-3 rounded ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`} onChange={e => setFormData({...formData, imageUrl: e.target.value})} />
+                                        </div>
+                                        <textarea placeholder="Excerpt" value={formData.excerpt} rows="2" className={`w-full border p-3 rounded ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`} onChange={e => setFormData({...formData, excerpt: e.target.value})}></textarea>
+                                        <textarea placeholder="Content" value={formData.content} rows="10" className={`w-full border p-3 rounded font-serif ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`} onChange={e => setFormData({...formData, content: e.target.value})}></textarea>
+                                        {uploadStatus && <p className="text-center text-green-500 font-bold bg-green-900/20 p-2 rounded">{uploadStatus}</p>}
+                                        <div className="flex gap-2">
+                                            <button onClick={handlePublish} className="flex-1 bg-red-600 text-white p-4 rounded-lg font-bold hover:bg-red-700 shadow-lg">{editingId ? 'Update' : 'Publish'}</button>
+                                            {editingId && <button onClick={()=>{setEditingId(null); setFormData({ title: '', category: 'Football', imageUrl: '', content: '', excerpt: '' });}} className="bg-slate-500 text-white px-6 rounded-lg font-bold">Cancel</button>}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="border-t border-slate-700 pt-10">
+                                    <h3 className="font-bold mb-6 text-xl">Manage Articles</h3>
+                                    <div className="space-y-4">
+                                        {articles.map(article => (
+                                            <div key={article.id} className={`flex justify-between items-center p-4 rounded-lg border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+                                                <div className="flex-1 pr-4">
+  
